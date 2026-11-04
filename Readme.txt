@@ -1,38 +1,217 @@
-1- install THE ADOBE APP
-2- run as trial, then quit
-3- run the crack now
+=====================================================================
+PROG101 - Assignment 1
+PROJECT: WasteTrack SL
+Community Waste Collection Scheduling and Missed-Pickup Reporting
+PSEUDOCODE
+=====================================================================
 
-ERROR. Setup file does not exist.??
-Before install the app Adobe CC Desktop needs to be installed prior to running.
-x64
-https://ccmdl.adobe.com/AdobeProducts/KCCC/CCD/5_9_0/osx10/ACCCx5_9_0_373.dmg
-
-For Apple Silicon M1
-https://ccmdl.adobe.com/AdobeProducts/KCCC/CCD/5_9_0/macarm64/ACCCx5_9_0_373.dmg
-
-If needed, install also runtime.pkg, CCXP.pkg and anticc.pkg files or even update to the latest version of adobe creative cloud app. If you still have issues, uninstall any old version, clean your host file using adobe cloud cleaner, reboot and try again.
-
-
-To change software language, right click on setup, show content, resources, product and open driver.xml
-On scroll bottom and replace the value on 
-<InstallLanguage>*****</InstallLanguage>
-
-with your language.
-
-en_US, en_GB, en_IL, en_AE, es_ES, es_MX, pt_BR, fr_FR, fr_CA, fr_MA, it_IT, de_DE, nl_NL, ru_RU, uk_UA, zh_TW, zh_CN, ja_JP, ko_KR, pl_PL, hu_HU, cs_CZ, tr_TR, sv_SE, nb_NO, fi_FI, da_DK
+---------------------------------------------------------------------
+1. CONSTANTS
+---------------------------------------------------------------------
+CONSTANT ESCALATION_LIMIT   = 3     // missed reports that trigger escalation
+CONSTANT REPORT_WINDOW_DAYS = 7     // days used when counting missed reports
+CONSTANT MIN_PHONE_LENGTH   = 8     // minimum digits in a valid phone number
 
 
+---------------------------------------------------------------------
+2. VARIABLES AND DATA TYPES
+---------------------------------------------------------------------
+householdID     : String    // unique ID of a registered household
+residentName    : String    // household contact person
+phoneNumber     : String    // kept as text so leading zeros are not lost
+zoneName        : String    // e.g. "Zone A"
+collectionDay   : String    // e.g. "Thursday"
+missedCount     : Integer   // missed reports in the last 7 days
+sentCount       : Integer   // number of reminders sent
+isRegistered    : Boolean   // TRUE if household exists
+isCollectionDay : Boolean   // TRUE if today matches the zone's day
+isCollected     : Boolean   // TRUE if crew marked zone collected today
+reportStatus    : String    // "Missed Pickup", "Disputed" or "Resolved"
+pickupRate      : Real      // percentage of successful collections
 
 
+---------------------------------------------------------------------
+3. MODULE 1: HOUSEHOLD REGISTRATION
+---------------------------------------------------------------------
+FUNCTION validatePhone(phoneNumber) RETURNS Boolean
+    IF LENGTH(phoneNumber) >= MIN_PHONE_LENGTH AND isAllDigits(phoneNumber) THEN
+        RETURN TRUE
+    ELSE
+        RETURN FALSE
+    END IF
+END FUNCTION
+
+FUNCTION registerHousehold(residentName, phoneNumber, zoneName) RETURNS String
+    IF NOT validatePhone(phoneNumber) THEN
+        DISPLAY "Invalid phone number"
+        RETURN ""
+    END IF
+
+    IF NOT zoneExists(zoneName) THEN
+        DISPLAY "Zone not found"
+        RETURN ""
+    END IF
+
+    householdID = generateID()
+    SAVE householdID, residentName, phoneNumber, zoneName
+    sendNotification(phoneNumber, "Registered. ID: " + householdID)
+    RETURN householdID
+END FUNCTION
 
 
-Important note!
-----------------------
+---------------------------------------------------------------------
+4. MODULE 2: SCHEDULE MANAGEMENT
+---------------------------------------------------------------------
+FUNCTION checkSchedule(zoneName) RETURNS Boolean
+    collectionDay = getCollectionDay(zoneName)
 
-Due to the nature of this No Account patch, it is recommended to go in General preferences and Turn Off the welcome window (where possible), and also set new documents to the legacy version in each app. There are some differences between Adobe apps patched with this patcher and the full account patch, notably:
+    IF collectionDay == getTodayName() THEN
+        RETURN TRUE
+    ELSE
+        RETURN FALSE
+    END IF
+END FUNCTION
 
-• There is not the full Welcome window experience in every app
-• Neural Filters and Gen AI does not work in this version (unless you use a plugin that has similar features). Generative Fill, Neural Filters and Generative Recolor won’t work.
-• You don’t have access to Creative Cloud Libraries, that can be used across Adobe apps
 
-The no account patch is a simpler patch and means you can run the Adobe apps offline, without having to sign in. It should also work between version updates (within reason, as things could change). As always, proceed with caution when running this patcher on a newer version of an Adobe app that was released after the patch. If you get unexpected behavior or Genuine messages, always try and revert back to the first version this patcher supports. 
+---------------------------------------------------------------------
+5. MODULE 3: NOTIFICATION
+---------------------------------------------------------------------
+FUNCTION sendNotification(phoneNumber, message)
+    IF validatePhone(phoneNumber) THEN
+        SEND SMS(phoneNumber, message)
+        LOG "Sent to " + phoneNumber
+    END IF
+END FUNCTION
+
+FUNCTION sendDailyReminders()
+    tomorrow  = getTodayDate() + 1 DAY
+    zoneList  = getZonesScheduledFor(tomorrow)
+    sentCount = 0
+
+    FOR EACH zone IN zoneList
+        householdList = getHouseholds(zone)
+
+        FOR EACH household IN householdList
+            sendNotification(household.phoneNumber, "Waste collection tomorrow in " + zone)
+            sentCount = sentCount + 1
+        END FOR
+    END FOR
+
+    DISPLAY sentCount + " reminders sent"
+END FUNCTION
+
+
+---------------------------------------------------------------------
+6. MODULE 4: MISSED PICKUP REPORTING
+---------------------------------------------------------------------
+FUNCTION reportMissedPickup(phoneNumber, zoneName)
+    isRegistered = householdExists(phoneNumber)
+
+    IF NOT isRegistered THEN
+        DISPLAY "Please register first"
+        RETURN
+    END IF
+
+    isCollectionDay = checkSchedule(zoneName)
+
+    IF NOT isCollectionDay THEN
+        DISPLAY "Next collection: " + getNextCollectionDate(zoneName)
+        RETURN
+    END IF
+
+    isCollected = isCollectedToday(zoneName)
+
+    IF isCollected THEN
+        SAVE report WITH status = "Disputed"
+        sendNotification(getSupervisor(zoneName).phone, "Disputed report in " + zoneName)
+        RETURN
+    END IF
+
+    SAVE report WITH status = "Missed Pickup"
+    missedCount = countMissedReports(zoneName, REPORT_WINDOW_DAYS)
+
+    IF missedCount >= ESCALATION_LIMIT THEN
+        escalateToSupervisor(zoneName, missedCount)
+    ELSE
+        assignCrew(zoneName)
+    END IF
+
+    sendNotification(phoneNumber, "Report received. A crew will be sent.")
+END FUNCTION
+
+
+---------------------------------------------------------------------
+7. MODULE 5: CREW TRACKING
+---------------------------------------------------------------------
+FUNCTION markZoneCollected(zoneName, crewID)
+    SAVE collection record (zoneName, crewID, today)
+    UPDATE any open reports for zoneName TO status = "Resolved"
+
+    FOR EACH report IN getResolvedReports(zoneName)
+        sendNotification(report.phoneNumber, "Your waste has been collected.")
+    END FOR
+END FUNCTION
+
+
+---------------------------------------------------------------------
+8. MODULE 6: SUPERVISOR REPORTS
+---------------------------------------------------------------------
+FUNCTION escalateToSupervisor(zoneName, missedCount)
+    supervisor = getSupervisor(zoneName)
+    sendNotification(supervisor.phone, zoneName + " has " + missedCount + " missed pickups")
+    SET zone status = "Escalated"
+END FUNCTION
+
+FUNCTION generateWeeklyReport()
+    FOR EACH zone IN getAllZones()
+        total  = countScheduledCollections(zone, 7)
+        missed = countMissedReports(zone, 7)
+
+        IF total > 0 THEN
+            pickupRate = ((total - missed) / total) * 100
+        ELSE
+            pickupRate = 0
+        END IF
+
+        IF pickupRate >= 90 THEN
+            rating = "Good"
+        ELSE IF pickupRate >= 60 AND pickupRate < 90 THEN
+            rating = "Needs Improvement"
+        ELSE
+            rating = "Critical"
+        END IF
+
+        DISPLAY zone, total, missed, pickupRate, rating
+    END FOR
+END FUNCTION
+
+
+---------------------------------------------------------------------
+9. MAIN PROGRAM
+---------------------------------------------------------------------
+START
+    running = TRUE
+
+    WHILE running == TRUE
+        DISPLAY "1. Register  2. Report Missed Pickup  3. Send Reminders"
+        DISPLAY "4. Weekly Report  5. Exit"
+        INPUT choice
+
+        SWITCH choice
+            CASE 1:
+                INPUT residentName, phoneNumber, zoneName
+                registerHousehold(residentName, phoneNumber, zoneName)
+            CASE 2:
+                INPUT phoneNumber, zoneName
+                reportMissedPickup(phoneNumber, zoneName)
+            CASE 3:
+                sendDailyReminders()
+            CASE 4:
+                generateWeeklyReport()
+            CASE 5:
+                running = FALSE
+            DEFAULT:
+                DISPLAY "Invalid choice, try again"
+        END SWITCH
+    END WHILE
+END
