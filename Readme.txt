@@ -1,217 +1,92 @@
-=====================================================================
-PROG101 - Assignment 1
-PROJECT: WasteTrack SL
-Community Waste Collection Scheduling and Missed-Pickup Reporting
-PSEUDOCODE
-=====================================================================
-
----------------------------------------------------------------------
-1. CONSTANTS
----------------------------------------------------------------------
-CONSTANT ESCALATION_LIMIT   = 3     // missed reports that trigger escalation
-CONSTANT REPORT_WINDOW_DAYS = 7     // days used when counting missed reports
-CONSTANT MIN_PHONE_LENGTH   = 8     // minimum digits in a valid phone number
-
-
----------------------------------------------------------------------
-2. VARIABLES AND DATA TYPES
----------------------------------------------------------------------
-householdID     : String    // unique ID of a registered household
-residentName    : String    // household contact person
-phoneNumber     : String    // kept as text so leading zeros are not lost
-zoneName        : String    // e.g. "Zone A"
-collectionDay   : String    // e.g. "Thursday"
-missedCount     : Integer   // missed reports in the last 7 days
-sentCount       : Integer   // number of reminders sent
-isRegistered    : Boolean   // TRUE if household exists
-isCollectionDay : Boolean   // TRUE if today matches the zone's day
-isCollected     : Boolean   // TRUE if crew marked zone collected today
-reportStatus    : String    // "Missed Pickup", "Disputed" or "Resolved"
-pickupRate      : Real      // percentage of successful collections
-
-
----------------------------------------------------------------------
-3. MODULE 1: HOUSEHOLD REGISTRATION
----------------------------------------------------------------------
-FUNCTION validatePhone(phoneNumber) RETURNS Boolean
-    IF LENGTH(phoneNumber) >= MIN_PHONE_LENGTH AND isAllDigits(phoneNumber) THEN
-        RETURN TRUE
-    ELSE
-        RETURN FALSE
-    END IF
-END FUNCTION
-
-FUNCTION registerHousehold(residentName, phoneNumber, zoneName) RETURNS String
-    IF NOT validatePhone(phoneNumber) THEN
-        DISPLAY "Invalid phone number"
-        RETURN ""
-    END IF
-
-    IF NOT zoneExists(zoneName) THEN
-        DISPLAY "Zone not found"
-        RETURN ""
-    END IF
-
-    householdID = generateID()
-    SAVE householdID, residentName, phoneNumber, zoneName
-    sendNotification(phoneNumber, "Registered. ID: " + householdID)
-    RETURN householdID
-END FUNCTION
-
-
----------------------------------------------------------------------
-4. MODULE 2: SCHEDULE MANAGEMENT
----------------------------------------------------------------------
-FUNCTION checkSchedule(zoneName) RETURNS Boolean
-    collectionDay = getCollectionDay(zoneName)
-
-    IF collectionDay == getTodayName() THEN
-        RETURN TRUE
-    ELSE
-        RETURN FALSE
-    END IF
-END FUNCTION
-
-
----------------------------------------------------------------------
-5. MODULE 3: NOTIFICATION
----------------------------------------------------------------------
-FUNCTION sendNotification(phoneNumber, message)
-    IF validatePhone(phoneNumber) THEN
-        SEND SMS(phoneNumber, message)
-        LOG "Sent to " + phoneNumber
-    END IF
-END FUNCTION
-
-FUNCTION sendDailyReminders()
-    tomorrow  = getTodayDate() + 1 DAY
-    zoneList  = getZonesScheduledFor(tomorrow)
-    sentCount = 0
-
-    FOR EACH zone IN zoneList
-        householdList = getHouseholds(zone)
-
-        FOR EACH household IN householdList
-            sendNotification(household.phoneNumber, "Waste collection tomorrow in " + zone)
-            sentCount = sentCount + 1
-        END FOR
-    END FOR
-
-    DISPLAY sentCount + " reminders sent"
-END FUNCTION
+WasteTrack SL
+A Community Waste Collection Scheduling and Missed-Pickup Reporting System (Logical Design)
+Course	PROG101: Principles of Programming Logic and Design
+Assignment	Assignment 1: Designing Logical Solutions for Sierra Leone Community Challenges
+University	Limkokwing University of Creative Technology, Sierra Leone
+Student: Edmond L. Dumbuya 
+Student ID: 905006577
+Examiner: Elijah Fullah
+Semester: 1
+Note: This is a design project. No source code is included, as the assignment brief requires a logical design only (algorithm, pseudocode, flowcharts and modular design).
+1. Project Overview
+In many Sierra Leonean communities, household waste is collected irregularly. Residents do not know when collection will happen, crews have no shared schedule, and there is no simple way to report a missed pickup. Waste then piles up, blocks drains and affects public health.
+WasteTrack SL is a logical system design that:
+registers households into collection zones,
+stores a weekly collection day for each zone,
+sends SMS reminders the day before collection,
+lets residents report a missed pickup,
+escalates repeatedly missed zones to a supervisor,
+produces a weekly performance report.
+The system is designed to work through SMS/USSD, so it can reach residents on basic phones with limited data.
+2. Problem Analysis
+Question	Answer
+Problem	Irregular, untracked household waste collection
+Who is affected	Households, traders, schools, clinics, collection crews, the city council
+Why it exists	No central schedule, no complaint tracking, informal coordination, limited internet access
+How the solution helps	Reminders, easy reporting, crew assignment, automatic escalation and weekly reports
+3. Computational Thinking
+Decomposition: registration, schedule management, notifications, missed-pickup reporting, crew tracking, supervisor reports.
+Pattern recognition: weekly repeating schedules; every report follows the same steps; the same zones are often missed repeatedly.
+Abstraction: a household is only an ID, name, phone number and zone; a zone is only a name, collection day and crew.
+Algorithm design: step-by-step procedures, converted into pseudocode and flowcharts.
+4. System Modules
+No.	Module	Main Functions
+1	Household Registration	validatePhone(), registerHousehold()
+2	Schedule Management	checkSchedule(), getCollectionDay()
+3	Notification	sendNotification(), sendDailyReminders()
+4	Missed Pickup Reporting	reportMissedPickup(), countMissedReports()
+5	Crew Tracking	assignCrew(), markZoneCollected()
+6	Supervisor Reports	escalateToSupervisor(), generateWeeklyReport()
+5. Programming Logic Concepts Demonstrated
+Constants: ESCALATION_LIMIT = 3, REPORT_WINDOW_DAYS = 7, MIN_PHONE_LENGTH = 8
+Variables and data types: String, Integer, Boolean, Real
+Decision structures: IF / ELSE IF / ELSE, SWITCH
+Boolean logic: AND, NOT, comparison operators
+Repetition structures: FOR EACH (nested) and WHILE
+Functions and modular design: six modules with reusable functions
+Input, processing, output: defined for every process
+6. Sample Scenarios
+Scenario	Expected Output
+Unregistered phone reports a missed pickup	“Please register first”
+Report made on a day that is not the zone’s collection day	Next collection day is shown
+Report made, but crew already marked the zone collected	Report saved as “Disputed”; supervisor alerted
+Zone not collected, 1 missed report this week	Crew assigned; confirmation SMS sent
+Zone not collected, 3 missed reports this week	Escalated to supervisor
+Reminders run for 3 zones (40, 25, 35 households)	“100 reminders sent”
+7. Sustainable Development Goals
+SDG 11: Sustainable Cities and Communities (main goal; better municipal waste management)
+SDG 3: Good Health and Well-being (cleaner surroundings reduce disease)
+SDG 12: Responsible Consumption and Production (responsible handling of waste)
+8. Open Source and Digital Public Good
+Why open source? Waste collection is a public service. Open source means no licence fees, local developers can study and improve the design, and communities do not depend on a single company.
+Possible community contributions: translations (Krio, Mende, Temne), USSD/SMS improvements, new report types, bug fixes, documentation, and adaptation for other towns and districts.
+Digital Public Good: The design is intended to be released under an open licence, to use open standards, to protect residents’ privacy, and to support the SDGs. It is accessible (works by SMS), open (anyone can reuse it) and built for public benefit.
+9. Community Impact
+Expected impact: cleaner streets, fewer blocked drains, better public health, more trust in waste services.
+Beneficiaries: residents, traders, schools, clinics, collection crews and the local council.
+Long-term sustainability: low running cost (SMS-based), simple for community groups to manage, and open so local developers can maintain it.
+10. Repository Structure
+README.md
+Report/ contains PROG101_Assignment1_WasteTrack_SL.docx
+Flowcharts/ contains main.png (missed-pickup report), remind.png (daily reminders) and modules.png (system modules)
+Pseudocode/ contains WasteTrack_SL_Pseudocode.txt and WasteTrack_SL_Pseudocode.pdf
+11. How to View the Project
+Read the Report for the full rationale, algorithms, outputs and references.
+Open the Flowcharts folder to see the process diagrams.
+Open the Pseudocode folder for the complete logic of every module.
+12. Version Control
+This project was developed using Git and GitHub with regular commits as the design progressed (README, problem analysis, algorithm, pseudocode, flowcharts, expected outputs and final report).
+13. References
+United Nations. Goal 11: Sustainable cities and communities. https://sdgs.un.org/goals/goal11
+United Nations. Goal 3: Good health and well-being. https://sdgs.un.org/goals/goal3
+United Nations. Goal 12: Responsible consumption and production. https://sdgs.un.org/goals/goal12
+Digital Public Goods Alliance. Digital Public Goods. https://digitalpublicgoods.net
+Open Source Initiative. The Open Source Definition. https://opensource.org/osd
+GitHub Docs. https://docs.github.com
+14. Academic Integrity
+This is my own individual work, submitted for PROG101 at Limkokwing University of Creative Technology, Sierra Leone.
+Replace [Your Full Name] and [Your Student ID] before you upload it. If you paste this straight into GitHub and the formatting (headings, tables) doesn’t come through, use the README.md file I sent earlier, since it keeps the formatting exactly.
 
 
----------------------------------------------------------------------
-6. MODULE 4: MISSED PICKUP REPORTING
----------------------------------------------------------------------
-FUNCTION reportMissedPickup(phoneNumber, zoneName)
-    isRegistered = householdExists(phoneNumber)
 
-    IF NOT isRegistered THEN
-        DISPLAY "Please register first"
-        RETURN
-    END IF
-
-    isCollectionDay = checkSchedule(zoneName)
-
-    IF NOT isCollectionDay THEN
-        DISPLAY "Next collection: " + getNextCollectionDate(zoneName)
-        RETURN
-    END IF
-
-    isCollected = isCollectedToday(zoneName)
-
-    IF isCollected THEN
-        SAVE report WITH status = "Disputed"
-        sendNotification(getSupervisor(zoneName).phone, "Disputed report in " + zoneName)
-        RETURN
-    END IF
-
-    SAVE report WITH status = "Missed Pickup"
-    missedCount = countMissedReports(zoneName, REPORT_WINDOW_DAYS)
-
-    IF missedCount >= ESCALATION_LIMIT THEN
-        escalateToSupervisor(zoneName, missedCount)
-    ELSE
-        assignCrew(zoneName)
-    END IF
-
-    sendNotification(phoneNumber, "Report received. A crew will be sent.")
-END FUNCTION
-
-
----------------------------------------------------------------------
-7. MODULE 5: CREW TRACKING
----------------------------------------------------------------------
-FUNCTION markZoneCollected(zoneName, crewID)
-    SAVE collection record (zoneName, crewID, today)
-    UPDATE any open reports for zoneName TO status = "Resolved"
-
-    FOR EACH report IN getResolvedReports(zoneName)
-        sendNotification(report.phoneNumber, "Your waste has been collected.")
-    END FOR
-END FUNCTION
-
-
----------------------------------------------------------------------
-8. MODULE 6: SUPERVISOR REPORTS
----------------------------------------------------------------------
-FUNCTION escalateToSupervisor(zoneName, missedCount)
-    supervisor = getSupervisor(zoneName)
-    sendNotification(supervisor.phone, zoneName + " has " + missedCount + " missed pickups")
-    SET zone status = "Escalated"
-END FUNCTION
-
-FUNCTION generateWeeklyReport()
-    FOR EACH zone IN getAllZones()
-        total  = countScheduledCollections(zone, 7)
-        missed = countMissedReports(zone, 7)
-
-        IF total > 0 THEN
-            pickupRate = ((total - missed) / total) * 100
-        ELSE
-            pickupRate = 0
-        END IF
-
-        IF pickupRate >= 90 THEN
-            rating = "Good"
-        ELSE IF pickupRate >= 60 AND pickupRate < 90 THEN
-            rating = "Needs Improvement"
-        ELSE
-            rating = "Critical"
-        END IF
-
-        DISPLAY zone, total, missed, pickupRate, rating
-    END FOR
-END FUNCTION
-
-
----------------------------------------------------------------------
-9. MAIN PROGRAM
----------------------------------------------------------------------
-START
-    running = TRUE
-
-    WHILE running == TRUE
-        DISPLAY "1. Register  2. Report Missed Pickup  3. Send Reminders"
-        DISPLAY "4. Weekly Report  5. Exit"
-        INPUT choice
-
-        SWITCH choice
-            CASE 1:
-                INPUT residentName, phoneNumber, zoneName
-                registerHousehold(residentName, phoneNumber, zoneName)
-            CASE 2:
-                INPUT phoneNumber, zoneName
-                reportMissedPickup(phoneNumber, zoneName)
-            CASE 3:
-                sendDailyReminders()
-            CASE 4:
-                generateWeeklyReport()
-            CASE 5:
-                running = FALSE
-            DEFAULT:
-                DISPLAY "Invalid choice, try again"
-        END SWITCH
-    END WHILE
-END
+Claude is AI and can make mistakes. Please double-check responses.
