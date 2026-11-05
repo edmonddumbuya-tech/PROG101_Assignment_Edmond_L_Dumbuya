@@ -84,9 +84,8 @@ Digital Public Goods Alliance. Digital Public Goods. https://digitalpublicgoods.
 Open Source Initiative. The Open Source Definition. https://opensource.org/osd
 GitHub Docs. https://docs.github.com
 14. Academic Integrity
-This is my own individual work, submitted for PROG101 at Limkokwing University of Creative Technology, Sierra Leone.
-Replace [Your Full Name] and [Your Student ID] before you upload it. If you paste this straight into GitHub and the formatting (headings, tables) doesn’t come through, use the README.md file I sent earlier, since it keeps the formatting exactly.
 
 
 
-Claude is AI and can make mistakes. Please double-check responses.
+
+
